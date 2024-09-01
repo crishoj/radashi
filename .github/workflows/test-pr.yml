@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test with Node runtime
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,3 +22,11 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm test
+  test-bun:
+    name: Test with Bun runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: run run test
