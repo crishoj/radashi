@@ -11,8 +11,19 @@
  * @version 12.1.0
  */
 export function flat<T>(lists: readonly T[][]): T[] {
-  return lists.reduce((acc, list) => {
-    acc.push(...list)
-    return acc
-  }, [])
+  let totalLength = 0
+  for (let i = 0; i < lists.length; i++) {
+    totalLength += lists[i].length
+  }
+
+  const out: T[] = new Array(totalLength)
+  let offset = 0
+  for (let i = 0; i < lists.length; i++) {
+    const list = lists[i]
+    for (let j = 0; j < list.length; j++) {
+      out[offset++] = list[j]
+    }
+  }
+
+  return out
 }
