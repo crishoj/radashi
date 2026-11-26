@@ -101,4 +101,32 @@ describe('crush', () => {
       })
     })
   })
+  test('preserves null, Set, and function leaves', () => {
+    const set = new Set([1, 2])
+    const fn = () => 1
+    const obj = {
+      nil: null,
+      set,
+      fn,
+      nested: { nil: null },
+    }
+    expect(_.crush(obj)).toEqual({
+      nil: null,
+      set,
+      fn,
+      'nested.nil': null,
+    })
+  })
+  test('crushes custom class instances and null-prototype objects', () => {
+    class Person {
+      name = 'ra'
+      meta = { power: 100 }
+    }
+    const nullProto = Object.assign(Object.create(null), { a: 1 })
+    expect(_.crush({ person: new Person(), nullProto })).toEqual({
+      'person.name': 'ra',
+      'person.meta.power': 100,
+      'nullProto.a': 1,
+    })
+  })
 })
