@@ -5,6 +5,10 @@ on:
     branches: [main, next]
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   bundle-impact:
     name: Calculate Bundle Impact
@@ -24,9 +28,9 @@ jobs:
           git checkout "pr/$PR_HEAD_REF" -- src
 
           if [ -z "$(git status --porcelain)" ]; then
-            echo '::set-output name=has_changes::false'
+            echo 'has_changes=false' >> "$GITHUB_OUTPUT"
           else
-            echo '::set-output name=has_changes::true'
+            echo 'has_changes=true' >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install pnpm
@@ -40,7 +44,7 @@ jobs:
       - name: Run Bundle Impact
         if: steps.checkout.outputs.has_changes == 'true'
         env:
-          RADASHI_BOT_TOKEN: ${{ secrets.RADASHI_BOT_TOKEN }}
+          RADASHI_BOT_TOKEN: ${{ secrets.RADASHI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           TARGET_BRANCH: ${{ github.base_ref }}
         run: |
           node scripts/run bundle-impact ${{ github.event.number }}

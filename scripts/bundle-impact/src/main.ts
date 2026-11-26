@@ -16,10 +16,13 @@ async function updateBundleImpact() {
   const { prNumber } = parseArgv(process.argv.slice(2))
 
   const { verifyEnvVars } = await import('@radashi-org/common/verifyEnvVars.ts')
-  const { radashiBotToken, targetBranch } = verifyEnvVars({
+  const { radashiBotToken, targetBranch, githubRepository } = verifyEnvVars({
     radashiBotToken: 'RADASHI_BOT_TOKEN',
     targetBranch: 'TARGET_BRANCH',
+    githubRepository: 'GITHUB_REPOSITORY?',
   })
+
+  const [owner, repo] = (githubRepository || 'radashi-org/radashi').split('/')
 
   console.log('weighing changed functions...')
 
@@ -40,8 +43,8 @@ async function updateBundleImpact() {
   console.log(`fetching PR #${prNumber} data...`)
 
   const { data: pullRequest } = await octokit.rest.pulls.get({
-    owner: 'radashi-org',
-    repo: 'radashi',
+    owner,
+    repo,
     pull_number: prNumber,
   })
 
@@ -58,8 +61,8 @@ async function updateBundleImpact() {
   if (updatedBody !== originalBody) {
     console.log('updating PR description...')
     await octokit.rest.pulls.update({
-      owner: 'radashi-org',
-      repo: 'radashi',
+      owner,
+      repo,
       pull_number: prNumber,
       body: updatedBody,
     })
