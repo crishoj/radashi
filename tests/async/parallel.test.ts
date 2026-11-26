@@ -163,4 +163,24 @@ describe('parallel', () => {
     })
     expect(result).toEqual([])
   })
+
+  test('orders aggregated errors by input index', async () => {
+    vi.useFakeTimers()
+
+    const promise = _.parallel(3, [1, 2, 3], async num => {
+      await _.sleep((4 - num) * 10)
+      throw new Error(`error ${num}`)
+    })
+    promise.catch(_.noop)
+
+    await vi.advanceTimersByTimeAsync(40)
+
+    const [error] = await _.try(() => promise)()
+    const err = error as AggregateError
+    expect(err.errors.map((e: Error) => e.message)).toEqual([
+      'error 1',
+      'error 2',
+      'error 3',
+    ])
+  })
 })
