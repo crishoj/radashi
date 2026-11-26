@@ -11,7 +11,7 @@
  */
 export function isDangerousKey(key: PropertyKey, object?: object): boolean {
   return (
-    !(object && !Object.getPrototypeOf(object)) &&
-    (key === '__proto__' || key === 'prototype' || key === 'constructor')
+    (key === '__proto__' || key === 'prototype' || key === 'constructor') &&
+    !(object && !Object.getPrototypeOf(object))
   )
 }
