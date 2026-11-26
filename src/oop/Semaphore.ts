@@ -11,11 +11,23 @@ interface AbortSignal {
  * A permit that can be acquired from a {@link Semaphore}.
  */
 export class SemaphorePermit {
+  private _request: PromiseWithResolvers<void> | undefined
+
   constructor(
     readonly semaphore: Semaphore,
-    readonly request: PromiseWithResolvers<void>,
+    request: PromiseWithResolvers<void>,
     readonly weight: number,
-  ) {}
+  ) {
+    this._request = request
+  }
+
+  get request(): PromiseWithResolvers<void> {
+    return (this._request ??= {
+      promise: Promise.resolve(),
+      resolve: noop,
+      reject: noop,
+    })
+  }
 
   /**
    * Releases this permit back to the semaphore, allowing another
@@ -78,22 +90,33 @@ export class Semaphore {
    * @returns A promise that resolves to a permit when one is
    * available
    */
-  async acquire({
-    signal,
-    weight = 1,
-  }: SemaphoreAcquireOptions = {}): Promise<SemaphorePermit> {
+  acquire(options?: SemaphoreAcquireOptions): Promise<SemaphorePermit> {
+    const weight = options?.weight ?? 1
+    const signal = options?.signal
     if (weight <= 0) {
-      throw new Error('weight must be > 0')
+      return Promise.reject(new Error('weight must be > 0'))
     }
     if (weight > this.maxCapacity) {
-      throw new Error('weight must be ≤ maxCapacity')
+      return Promise.reject(new Error('weight must be ≤ maxCapacity'))
     }
     if (signal?.aborted) {
-      throw signal.reason
+      return Promise.reject(signal.reason)
     }
+    if (this.capacity < weight) {
+      return this.enqueue(weight, signal)
+    }
+    // @ts-expect-error: Allow mutation
+    this.capacity -= weight
+    return Promise.resolve(new SemaphorePermit(this, undefined!, weight))
+  }
+
+  private enqueue(
+    weight: number,
+    signal?: AbortSignal,
+  ): Promise<SemaphorePermit> {
     const request = withResolvers<void>()
     const permit = new SemaphorePermit(this, request, weight)
-    if (signal && this.capacity < weight) {
+    if (signal) {
       const abort = () => {
         const index = this.queue.indexOf(permit)
         if (index >= 0) {
@@ -108,14 +131,8 @@ export class Semaphore {
       // Can't use `promise.finally` in legacy runtimes.
       request.promise.then(cleanup, cleanup)
     }
-    if (this.capacity < weight) {
-      this.queue.push(permit)
-      await request.promise
-    } else {
-      // @ts-expect-error: Allow mutation
-      this.capacity -= weight
-    }
-    return permit
+    this.queue.push(permit)
+    return request.promise.then(() => permit)
   }
 
   /**
@@ -123,8 +140,11 @@ export class Semaphore {
    */
   reject(error: Error): void {
     this.acquire = () => Promise.reject(error)
-    this.queue.forEach(permit => permit.request.reject(error))
+    const { queue } = this
     this.queue = []
+    for (let i = 0; i < queue.length; i++) {
+      queue[i].request.reject(error)
+    }
   }
 
   /**
@@ -135,15 +155,36 @@ export class Semaphore {
     // @ts-expect-error: Allow mutation
     this.capacity += permit.weight
 
+    const { queue } = this
+    const len = queue.length
+    if (len === 0) {
+      return
+    }
+
     // Fulfill queued requests while the available capacity allows it.
-    let nextPermit = this.queue[0]
-    while (nextPermit && this.capacity >= nextPermit.weight) {
+    let drained = 0
+    while (drained < len && this.capacity >= queue[drained].weight) {
       // Update the capacity immediately to avoid race conditions.
       // @ts-expect-error: Allow mutation
-      this.capacity -= nextPermit.weight
-      this.queue.shift()
-      nextPermit.request.resolve()
-      nextPermit = this.queue[0]
+      this.capacity -= queue[drained++].weight
+    }
+
+    if (drained === 0) {
+      return
+    }
+    if (drained === 1) {
+      queue.shift()!.request.resolve()
+      return
+    }
+    let ready: SemaphorePermit[]
+    if (drained === len) {
+      ready = queue
+      this.queue = []
+    } else {
+      ready = queue.splice(0, drained)
+    }
+    for (let i = 0; i < drained; i++) {
+      ready[i].request.resolve()
     }
   }
 }

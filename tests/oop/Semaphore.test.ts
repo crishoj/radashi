@@ -265,3 +265,87 @@ test('removes the abort listener after a queued acquisition succeeds', async () 
   expect(semaphore.capacity).toBe(0)
   permit.release()
 })
+
+test('drains multiple requests while leaving larger ones queued', async () => {
+  const semaphore = new Semaphore(4)
+  const first = await semaphore.acquire({ weight: 3 })
+  const second = await semaphore.acquire()
+  const acquired: SemaphorePermit[] = []
+  const requests = [1, 1, 3].map(weight =>
+    semaphore.acquire({ weight }).then(permit => acquired.push(permit)),
+  )
+  first.release()
+  await new Promise(resolve => setTimeout(resolve, 0))
+  expect(acquired.map(permit => permit.weight)).toEqual([1, 1])
+  expect(semaphore.capacity).toBe(1)
+  expect(semaphore.queueLength).toBe(1)
+  second.release()
+  acquired.splice(0).forEach(permit => permit.release())
+  await Promise.all(requests)
+  expect(acquired.map(permit => permit.weight)).toEqual([3])
+  acquired.forEach(permit => permit.release())
+  expect(semaphore.capacity).toBe(4)
+})
+
+test('exposes a resolved request on immediately acquired permits', async () => {
+  const semaphore = new Semaphore(1)
+  const permit = await semaphore.acquire()
+  const request = permit.request
+  expect(permit.request).toBe(request)
+  await expect(request.promise).resolves.toBeUndefined()
+  expect(typeof request.resolve).toBe('function')
+  expect(typeof request.reject).toBe('function')
+  permit.release()
+})
+
+test('ignores abort after a queued permit was already released', async () => {
+  const semaphore = new Semaphore(1)
+  const held = await semaphore.acquire()
+  const controller = new AbortController()
+  const pending = semaphore.acquire({ signal: controller.signal })
+  held.release()
+  // Abort synchronously before microtasks remove the listener
+  controller.abort()
+  const permit = await pending
+  expect(semaphore.capacity).toBe(0)
+  permit.release()
+  expect(semaphore.capacity).toBe(1)
+})
+
+test('queued permit request promise resolves to undefined', async () => {
+  const semaphore = new Semaphore(1)
+  const held = await semaphore.acquire()
+  const pending = semaphore.acquire()
+  held.release()
+  const permit = await pending
+  await expect(permit.request.promise).resolves.toBeUndefined()
+  permit.release()
+})
+
+test('updates queue before resolving permits during release', async () => {
+  const seenQueueLengths: number[] = []
+  class CustomSemaphore extends Semaphore {
+    enqueueCustom(weight: number) {
+      const permit = new SemaphorePermit(
+        this,
+        {
+          promise: Promise.resolve(),
+          resolve: () => {
+            seenQueueLengths.push(this.queue.length)
+            this.queue.length = 0
+          },
+          reject: () => {},
+        },
+        weight,
+      )
+      this.queue.push(permit)
+    }
+  }
+  const semaphore = new CustomSemaphore(2)
+  const held = await semaphore.acquire({ weight: 2 })
+  semaphore.enqueueCustom(1)
+  semaphore.enqueueCustom(1)
+  held.release()
+  expect(seenQueueLengths).toEqual([0, 0])
+  expect(semaphore.queueLength).toBe(0)
+})
