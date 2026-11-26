@@ -1,5 +1,37 @@
 import { isArray, isPlainObject } from 'radashi'
 
+function collectKeys(value: any, prefix: string, out: string[]): void {
+  if (isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      if (i in value) {
+        const item = value[i]
+        const path = prefix + i
+        if (typeof item === 'object' && item !== null) {
+          collectKeys(item, path + '.', out)
+        } else {
+          out.push(path)
+        }
+      }
+    }
+    return
+  }
+  if (isPlainObject(value)) {
+    const objKeys = Object.keys(value)
+    for (let i = 0; i < objKeys.length; i++) {
+      const key = objKeys[i]
+      const propValue = (value as Record<string, any>)[key]
+      const path = prefix + key
+      if (typeof propValue === 'object' && propValue !== null) {
+        collectKeys(propValue, path + '.', out)
+      } else {
+        out.push(path)
+      }
+    }
+    return
+  }
+  out.push(prefix.slice(0, -1))
+}
+
 /**
  * Get a string list of all key names that exist in an object (deep).
  *
@@ -14,25 +46,7 @@ import { isArray, isPlainObject } from 'radashi'
  * @version 12.1.0
  */
 export function keys(value: object): string[] {
-  const keys: string[] = []
-  const keyPath: (string | number)[] = []
-  const recurse = (value: any) => {
-    if (isPlainObject(value)) {
-      for (const [prop, propValue] of Object.entries(value)) {
-        keyPath.push(prop)
-        recurse(propValue)
-        keyPath.pop()
-      }
-    } else if (isArray(value)) {
-      value.forEach((item, index) => {
-        keyPath.push(index)
-        recurse(item)
-        keyPath.pop()
-      })
-    } else {
-      keys.push(keyPath.join('.'))
-    }
-  }
-  recurse(value)
-  return keys
+  const out: string[] = []
+  collectKeys(value, '', out)
+  return out
 }

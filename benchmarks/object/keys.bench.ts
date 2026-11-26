@@ -22,4 +22,37 @@ describe('keys', () => {
     }
     _.keys(ra)
   })
+
+  const largeTree = {
+    id: 1,
+    meta: {
+      createdAt: new Date(0),
+      tags: ['a', 'b', 'c', 'd', 'e'],
+      flags: {
+        active: true,
+        verified: false,
+        tier: 3,
+      },
+    },
+    users: Array.from({ length: 10 }, (_, i) => ({
+      id: i,
+      name: `user-${i}`,
+      profile: {
+        email: `user${i}@example.com`,
+        role: i % 2 === 0 ? 'admin' : 'member',
+        scores: [i * 10, i * 20, i * 30],
+      },
+      settings: {
+        theme: 'dark',
+        notifications: {
+          email: true,
+          sms: false,
+        },
+      },
+    })),
+  }
+
+  bench('with large nested tree', () => {
+    _.keys(largeTree)
+  })
 })
