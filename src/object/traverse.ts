@@ -1,4 +1,4 @@
-import { isArray, isFunction, isIterable, isPlainObject, last } from 'radashi'
+import { isArray, isIterable, isPlainObject } from 'radashi'
 
 export interface TraverseOptions<Key = string | number | symbol> {
   /**
@@ -60,41 +60,19 @@ export function traverse(
   options?: TraverseOptions<any> | null,
   outerContext?: TraverseContext<any> | null,
 ): boolean {
-  const context = (outerContext ?? {
-    value: null,
-    key: null,
-    parent: null,
-    parents: [],
-    path: [],
-    skipped: new Set(),
-    skip(obj) {
-      context.skipped.add(obj ?? context.value)
-    },
-  }) as TraverseContext<keyof any | null> & {
-    value: unknown
-    key: keyof any | null
-    parent: any
-    parents: object[]
-    path: (keyof any)[]
-    skipped: Set<unknown>
-  }
+  const context = (outerContext ?? new Context()) as Context
+  const outerSkipped = outerContext?.skipped
 
-  const { rootNeedsVisit } = (options ??= {})
-  const ownKeys = options.ownKeys ?? Object.keys
-  const nestedOptions = {
-    ...options,
-    rootNeedsVisit: null,
-  }
+  const rootNeedsVisit = options?.rootNeedsVisit
+  const ownKeys = options?.ownKeys ?? Object.keys
+  const nestedOptions = options
+    ? { ...options, rootNeedsVisit: null }
+    : { rootNeedsVisit: null }
 
   let ok = true
 
   // This is called for each value in an object or iterable.
   const visit = (value: unknown, key: keyof any): boolean => {
-    // Map entries are destructured into value and key.
-    if (context.parent.constructor === Map) {
-      ;[key, value] = value as [keyof any, unknown]
-    }
-
     context.path.push(key)
     const result = visitor(
       (context.value = value),
@@ -111,10 +89,10 @@ export function traverse(
     // Traverse nested plain objects and arrays that haven't been
     // skipped and aren't a circular reference.
     if (
-      value !== null &&
       typeof value === 'object' &&
+      value &&
       (isArray(value) || isPlainObject(value)) &&
-      !context.skipped.has(value) &&
+      !(context._skipped ?? outerSkipped)?.has(value) &&
       !context.parents.includes(value)
     ) {
       traverse(value, result)
@@ -145,24 +123,22 @@ export function traverse(
     }
 
     if (isArray(parent)) {
-      // Use Array.prototype.forEach for arrays so that sparse arrays
-      // are efficiently traversed. The array must be cloned so it can
-      // be cleared if the visitor returns false.
-      parent.slice().forEach((value, index, values) => {
-        if (visit(value, index) === false) {
-          values.length = 0 // Stop further traversal.
-        }
-      })
+      // Use Array.prototype.some so sparse arrays are efficiently
+      // traversed and traversal stops immediately when visitor returns
+      // false.
+      parent.some((value, index) => visit(value, index) === false)
     }
     // Allow an iterable (e.g. a Map or a Set) to be passed in as the
     // root object.
     else if (parent === root && isIterable(parent)) {
+      const isMap = parent.constructor === Map
       let index = 0
-      for (const value of parent) {
-        if (visit(value, index) === false) {
+      for (const item of parent as Iterable<any>) {
+        // Map entries are destructured into key and value.
+        const res = isMap ? visit(item[1], item[0]) : visit(item, index++)
+        if (res === false) {
           return ok
         }
-        index++
       }
     }
     // Traverse the object's properties.
@@ -175,10 +151,10 @@ export function traverse(
     }
 
     context.parents.pop()
-    context.parent = last(context.parents)
+    context.parent = context.parents[context.parents.length - 1]
 
     // Invoke the leave callback for the completed parent.
-    if (ok && isFunction(parentResult)) {
+    if (ok && typeof parentResult === 'function') {
       ok = parentResult() !== false
     }
 
@@ -189,7 +165,7 @@ export function traverse(
     // If this is a recursive call, it's possible that the root object
     // was skipped earlier. Check for that here so the caller doesn't
     // have to check for it.
-    if (outerContext.skipped.has(root)) {
+    if (outerSkipped!.has(root)) {
       return true
     }
 
@@ -205,6 +181,23 @@ export function traverse(
   }
 
   return traverse(root)
+}
+
+class Context {
+  value: unknown = null
+  key: keyof any | null = null
+  parent: any = null
+  parents: object[] = []
+  path: (keyof any)[] = []
+  declare _skipped?: Set<unknown>
+
+  get skipped(): Set<unknown> {
+    return (this._skipped ??= new Set())
+  }
+
+  skip = (obj?: object): void => {
+    this.skipped.add(obj ?? this.value)
+  }
 }
 
 /**
