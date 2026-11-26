@@ -32,6 +32,10 @@ describe('get', () => {
     _.get(jay, 'friends[0].age')
   })
 
+  bench('with quoted bracket path', () => {
+    _.get(jay, 'friends["0"].age')
+  })
+
   bench('with default value', () => {
     _.get(jay, 'friends.1.age', 22)
   })
