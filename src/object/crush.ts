@@ -13,23 +13,32 @@ import { type Intersect, isArray, isObject, type Simplify } from 'radashi'
  * @version 12.1.0
  */
 export function crush<T extends object>(value: T): Crush<T> {
-  if (Object.keys(value).length === 0) {
-    return {} as Crush<T>
-  }
-  return (function crushReducer(
-    crushed: Crush<T>,
-    value: unknown,
-    path: string,
-  ) {
-    if ((isObject(value) || isArray(value)) && Object.keys(value).length > 0) {
-      for (const [prop, propValue] of Object.entries(value)) {
-        crushReducer(crushed, propValue, path ? `${path}.${prop}` : prop)
-      }
-    } else {
-      crushed[path as keyof Crush<T>] = value as Crush<T>[keyof Crush<T>]
+  const crushed: Record<string, unknown> = {}
+  crushObject(crushed, value as Record<string, unknown>, '')
+  return crushed as Crush<T>
+}
+
+function crushObject(
+  crushed: Record<string, unknown>,
+  obj: Record<string, unknown>,
+  prefix: string,
+): boolean {
+  const keys = Object.keys(obj)
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
+    const value = obj[key]
+    const path = prefix + key
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      (isArray(value) || isObject(value)) &&
+      crushObject(crushed, value as Record<string, unknown>, `${path}.`)
+    ) {
+      continue
     }
-    return crushed
-  })({} as Crush<T>, value, '')
+    crushed[path] = value
+  }
+  return keys.length > 0
 }
 
 /**
