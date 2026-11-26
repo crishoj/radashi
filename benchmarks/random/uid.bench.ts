@@ -8,4 +8,8 @@ describe('uid', () => {
   bench('with special characters', () => {
     _.uid(20, '_-+~')
   })
+
+  bench('long string', () => {
+    _.uid(64)
+  })
 })

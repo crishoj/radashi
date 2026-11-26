@@ -22,4 +22,10 @@ describe('uid', () => {
     )
     expect(result).toContain('_')
   })
+  test('handles edge-case lengths', () => {
+    expect(_.uid(0)).toBe('')
+    expect(_.uid(-5)).toBe('')
+    expect(_.uid(Number.NaN)).toBe('')
+    expect(_.uid(2.5)).toHaveLength(2)
+  })
 })
