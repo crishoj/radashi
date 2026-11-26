@@ -1,11 +1,18 @@
 import * as _ from 'radashi'
-import { bench } from 'vitest'
 
 describe('dedent', () => {
   const input = `
     Hello
     World
   `
+
+  const largeInput =
+    '\n' +
+    Array.from(
+      { length: 40 },
+      (_, i) => `        line ${i}: const value = ${i * 2}`,
+    ).join('\n') +
+    '\n    '
 
   bench('dedent as tagged template literal', () => {
     _.dedent`
@@ -17,5 +24,9 @@ describe('dedent', () => {
 
   bench('dedent as direct call', () => {
     _.dedent(input)
+  })
+
+  bench('dedent large multiline block', () => {
+    _.dedent(largeInput)
   })
 })

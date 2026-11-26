@@ -1,5 +1,8 @@
 import { isArray } from 'radashi'
 
+const embeddedNlRe = /\n(?=[^\n]*?\S)/g
+const wsRe = /\s/
+
 /**
  * Remove indentation from a string. The given string is expected to
  * be consistently indented (i.e. the leading whitespace of the first
@@ -48,41 +51,109 @@ export function dedent(
   text: string | TemplateStringsArray,
   ...values: unknown[]
 ): string {
+  let str = text as string
+  let indent = values[0] as string | null | undefined
+
   // Support tagged template strings
   if (isArray(text)) {
-    if (values.length > 0) {
-      return dedent(
-        text.reduce((acc, input, i) => {
-          let value = String(values[i] ?? '')
-
+    indent = undefined
+    str = text[0]
+    for (let i = 0; i < text.length - 1; i++) {
+      const raw = values[i]
+      if (raw != null) {
+        let value = String(raw)
+        if (value.includes('\n')) {
           // Detect the indentation before this embedded string.
-          const indent =
-            value.includes('\n') && input.match(/[ \t]*(?=[^\n]*$)/)?.[0]
-
-          // Ensure the multi-line, embedded string can be correctly
-          // dedented.
-          if (indent) {
-            value = value.replace(/\n(?=[^\n]*?\S)/g, '\n' + indent)
+          const input = text[i]
+          const indentStart = input.lastIndexOf('\n') + 1
+          const indentEnd = skipSpaces(input, indentStart, input.length)
+          if (indentEnd > indentStart) {
+            // Ensure the multi-line, embedded string can be correctly
+            // dedented.
+            value = value.replace(
+              embeddedNlRe,
+              '\n' + input.slice(indentStart, indentEnd),
+            )
           }
-
-          return acc + input + value
-        }, ''),
-      )
+        }
+        str += value
+      }
+      str += text[i + 1]
     }
-
-    text = text[0]
   }
 
-  // If no indent is provided, use the indentation of the first
-  // non-empty line.
-  const indent = values[0] ?? text.match(/^[ \t]*(?=\S)/m)?.[0]
+  // Remove the first and last lines if empty (after stripping any explicit
+  // indent; auto-detected indent is only spaces/tabs so blankness is invariant).
+  const firstNl = str.indexOf('\n')
+  let start =
+    firstNl !== -1 && isBlank(str, 0, firstNl, indent) ? firstNl + 1 : 0
+
+  let end = str.length
+  const lastNl = str.lastIndexOf('\n')
+  if (lastNl >= start && isBlank(str, lastNl + 1, end, indent)) {
+    end = lastNl
+  }
+
+  // If no indent is provided, detect it from the first non-empty line.
+  let needle = ''
+  if (indent == null) {
+    indent = ''
+    for (let pos = start; pos < end; ) {
+      const p = skipSpaces(str, pos, end)
+      if (p < end) {
+        const c = str.charCodeAt(p)
+        if ((c < 10 || c > 13) && (c < 160 || !wsRe.test(str[p]))) {
+          indent = str.slice(pos, p)
+          if (pos > 0) {
+            needle = str.slice(pos - 1, p)
+          }
+          break
+        }
+      }
+      pos = str.indexOf('\n', p) + 1
+      if (pos === 0) {
+        break
+      }
+    }
+  }
 
   // Note: Lines with an indent less than the removed indent will not
   // be changed.
-  const output = indent
-    ? text.replace(new RegExp(`^${indent}`, 'gm'), '')
-    : text
+  let out = ''
+  if (indent && start < end) {
+    const indentLen = indent.length
+    if (start + indentLen <= end && str.startsWith(indent, start)) {
+      start += indentLen
+    }
+    needle ||= '\n' + indent
+    let idx: number
+    while ((idx = str.indexOf(needle, start)) !== -1 && idx + indentLen < end) {
+      out += str.slice(start, idx + 1)
+      start = idx + indentLen + 1
+    }
+  }
 
-  // Remove the first and last lines (if empty).
-  return output.replace(/^[ \t]*\n|\n[ \t]*$/g, '')
+  return out + str.slice(start, end)
+}
+
+function skipSpaces(str: string, pos: number, end: number): number {
+  while (
+    pos < end &&
+    (str.charCodeAt(pos) === 32 || str.charCodeAt(pos) === 9)
+  ) {
+    pos++
+  }
+  return pos
+}
+
+function isBlank(
+  str: string,
+  pos: number,
+  end: number,
+  indent: string | null | undefined,
+): boolean {
+  if (indent && str.startsWith(indent, pos)) {
+    pos += indent.length
+  }
+  return skipSpaces(str, pos, end) === end
 }

@@ -153,4 +153,50 @@ describe('dedent', () => {
     `
     expect(_.dedent(string)).toBe('a\n       b\n      c\nd')
   })
+
+  test('empty and whitespace-only strings', () => {
+    expect(_.dedent('')).toBe('')
+    expect(_.dedent('\n')).toBe('')
+    expect(_.dedent('   ')).toBe('   ')
+    expect(_.dedent('  \n  ')).toBe('  ')
+    expect(_.dedent('  \n\n  ')).toBe('')
+    expect(_.dedent('  \r')).toBe('  \r')
+  })
+
+  test('no leading or trailing blank lines', () => {
+    expect(_.dedent('  Foo\n  Bar')).toBe('Foo\nBar')
+    expect(_.dedent('  Foo')).toBe('Foo')
+    expect(_.dedent('Foo\n  Bar')).toBe('Foo\n  Bar')
+  })
+
+  test('explicit indentation edge cases', () => {
+    expect(_.dedent('  \n  Hello\n  World\n  ', '')).toBe('  Hello\n  World')
+    expect(_.dedent('  \n  Hello\n  World\n  ', '  ')).toBe('Hello\nWorld')
+    expect(_.dedent('>\n> Hello\n>', '>')).toBe(' Hello')
+    expect(_.dedent('\n  Hello\n  \n', '  ')).toBe('Hello\n')
+    expect(_.dedent('  Hello', '  ')).toBe('Hello')
+  })
+
+  test('tab, CRLF, and Unicode whitespace handling', () => {
+    expect(_.dedent('\n\tFoo\n\t\tBar\n\t')).toBe('Foo\n\tBar')
+    expect(_.dedent('  \r\n  Foo\r\n  Bar\r\n')).toBe('\r\nFoo\r\nBar\r')
+    expect(_.dedent('  \u00A0\n  café\n  naïve\n')).toBe('\u00A0\ncafé\nnaïve')
+  })
+
+  test('tagged template edge cases', () => {
+    expect(_.dedent`
+      Hello
+      World
+    `).toBe('Hello\nWorld')
+
+    expect(_.dedent`
+      A ${null} B ${undefined} C ${0}
+    `).toBe('A  B  C 0')
+
+    expect(_.dedent`foo ${'1\n2'}`).toBe('foo 1\n2')
+
+    expect(_.dedent`
+      ${'1\n\n  \n2'}
+    `).toBe('1\n\n  \n2')
+  })
 })
