@@ -1,14 +1,27 @@
 import * as _ from 'radashi'
 
-const sut = _.series([
+const weekdays = [
   'monday',
   'tuesday',
   'wednesday',
   'thursday',
   'friday',
-] as const)
+] as const
+
+const sut = _.series(weekdays)
+
+const largeItems = Array.from({ length: 100 }, (_, i) => `item-${i}`)
+const largeSut = _.series(largeItems)
 
 describe('series', () => {
+  bench('create series (5 items)', () => {
+    _.series(weekdays)
+  })
+
+  bench('create series (100 items)', () => {
+    _.series(largeItems)
+  })
+
   describe('min method', () => {
     bench('min of two items', () => {
       sut.min('monday', 'tuesday')
@@ -56,6 +69,14 @@ describe('series', () => {
 
     bench('spin by negative number', () => {
       sut.spin('wednesday', -3)
+    })
+
+    bench('spin large series by 50', () => {
+      largeSut.spin('item-25', 50)
+    })
+
+    bench('spin large series by -50', () => {
+      largeSut.spin('item-25', -50)
     })
   })
 })
