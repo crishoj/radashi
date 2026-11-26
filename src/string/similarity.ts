@@ -30,16 +30,23 @@ export function similarity(str1: string, str2: string): number {
     return 0
   }
 
+  // Ensure str1 is no longer than str2 so buffers use O(min(m, n)) memory.
+  if (str1.length > str2.length) {
+    const tmp = str1
+    str1 = str2
+    str2 = tmp
+  }
+
   // Find common prefix and suffix
   let start = 0
   let end1 = str1.length - 1
   let end2 = str2.length - 1
 
-  while (start <= end1 && start <= end2 && str1[start] === str2[start]) {
+  while (start <= end1 && str1.charCodeAt(start) === str2.charCodeAt(start)) {
     start++
   }
 
-  while (end1 >= start && end2 >= start && str1[end1] === str2[end2]) {
+  while (end1 >= start && str1.charCodeAt(end1) === str2.charCodeAt(end2)) {
     end1--
     end2--
   }
@@ -52,34 +59,32 @@ export function similarity(str1: string, str2: string): number {
   if (length1 === 0) {
     return length2
   }
-  if (length2 === 0) {
-    return length1
+
+  // Keep one row of the distance table and str1's code units in typed arrays.
+  const row = new Int32Array(length1)
+  const codes = new Uint16Array(length1)
+  for (let y = 0; y < length1; y++) {
+    row[y] = y + 1
+    codes[y] = str1.charCodeAt(start + y)
   }
 
-  // Keep one row of the distance table, indexed by position in str1.
-  const row = new Uint32Array(length1 + 1)
-  for (let y = 1; y <= length1; y++) {
-    row[y] = y
-  }
-
-  for (let x = 1; x <= length2; x++) {
-    let diagonal = row[0]
-    row[0] = x
-    const char2 = str2[start + x - 1]
-    for (let y = 1; y <= length1; y++) {
+  for (let x = 0; x < length2; x++) {
+    let diagonal = x
+    let left = x + 1
+    const char2 = str2.charCodeAt(start + x)
+    for (let y = 0; y < length1; y++) {
       const above = row[y]
-      row[y] = Math.min(
-        // Cost of a deletion.
-        row[y - 1] + 1,
-        // Cost of an insertion.
-        above + 1,
-        // Cost of a substitution.
-        diagonal + (str1[start + y - 1] === char2 ? 0 : 1),
-      )
+      if (codes[y] === char2) {
+        left = diagonal
+      } else {
+        const min = left < above ? left : above
+        left = (diagonal < min ? diagonal : min) + 1
+      }
+      row[y] = left
       diagonal = above
     }
   }
 
   // Return the Levenshtein distance
-  return row[length1]
+  return row[length1 - 1]
 }
