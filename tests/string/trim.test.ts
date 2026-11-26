@@ -12,5 +12,24 @@ describe('trim', () => {
   })
   test('handles when char to trim is special case in regex', () => {
     expect(_.trim('_- hello_- ', '_- ')).toBe('hello')
+    expect(_.trim('[]^\\.$*+?(){}|hello[]^\\', '[]^\\.$*+?(){}|')).toBe(
+      'hello',
+    )
+    expect(_.trim('---hello---', '-')).toBe('hello')
+    expect(_.trim('...hello...', '.')).toBe('hello')
+  })
+  test('handles edge cases', () => {
+    expect(_.trim('', '_')).toBe('')
+    expect(_.trim('hello', '')).toBe('hello')
+    expect(_.trim('', '')).toBe('')
+    expect(_.trim('___', '_')).toBe('')
+    expect(_.trim('_- _-', '_- ')).toBe('')
+    expect(_.trim('hello', '_- ')).toBe('hello')
+    expect(_.trim('__hello', '_')).toBe('hello')
+    expect(_.trim('hello__', '_')).toBe('hello')
+    expect(_.trim('_-hello', '_-')).toBe('hello')
+    expect(_.trim('hello_-', '_-')).toBe('hello')
+    expect(_.trim('✨hello✨', '✨')).toBe('hello')
+    expect(_.trim('😀hello😀', '😀')).toBe('hello')
   })
 })
