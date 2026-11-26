@@ -1,5 +1,3 @@
-import { list, range } from 'radashi'
-
 export interface Series<T> {
   min: (a: T, b: T) => T
   max: (a: T, b: T) => T
@@ -9,6 +7,8 @@ export interface Series<T> {
   previous: (current: T, defaultValue?: T) => T
   spin: (current: T, num: number) => T
 }
+
+const defaultToKey = (item: unknown): string => `${item}`
 
 /**
  * Creates a series object around a list of values that should be
@@ -30,41 +30,15 @@ export interface Series<T> {
  */
 export const series = <T>(
   items: readonly T[],
-  toKey: (item: T) => string | symbol = item => `${item}`,
+  toKey: (item: T) => string | symbol = defaultToKey,
 ): Series<T> => {
+  const len = items.length
   const indexesByKey: Record<string | symbol, number> = {}
-  const itemsByIndex: Record<number, T> = {}
+  const itemsByIndex = items.slice()
 
-  for (const idx of range(items.length - 1)) {
-    const item = items[idx]
-    indexesByKey[toKey(item)] = idx
-    itemsByIndex[idx] = item
+  for (let idx = 0; idx < len; idx++) {
+    indexesByKey[toKey(itemsByIndex[idx])] = idx
   }
-
-  /**
-   * Returns the first item from the series.
-   */
-  const first = (): T => itemsByIndex[0]
-
-  /**
-   * Returns the last item in the series.
-   */
-  const last = (): T => itemsByIndex[items.length - 1]
-
-  /**
-   * Given an item in the series, returns the next item in the series
-   * or `defaultValue` if the given value is the last item in the series.
-   */
-  const next = (current: T, defaultValue?: T): T =>
-    itemsByIndex[indexesByKey[toKey(current)] + 1] ?? defaultValue ?? first()
-
-  /**
-   * Given an item in the series, returns the previous item in the
-   * series or `defaultValue` if the given value is the first item in
-   * the series.
-   */
-  const previous = (current: T, defaultValue?: T): T =>
-    itemsByIndex[indexesByKey[toKey(current)] - 1] ?? defaultValue ?? last()
 
   return {
     /**
@@ -81,10 +55,41 @@ export const series = <T>(
     max(a, b) {
       return indexesByKey[toKey(a)] > indexesByKey[toKey(b)] ? a : b
     },
-    first,
-    last,
-    next,
-    previous,
+    /**
+     * Returns the first item from the series.
+     */
+    first() {
+      return itemsByIndex[0]
+    },
+    /**
+     * Returns the last item in the series.
+     */
+    last() {
+      return itemsByIndex[len - 1]
+    },
+    /**
+     * Given an item in the series, returns the next item in the series
+     * or `defaultValue` if the given value is the last item in the series.
+     */
+    next(current, defaultValue) {
+      return (
+        itemsByIndex[indexesByKey[toKey(current)] + 1] ??
+        defaultValue ??
+        itemsByIndex[0]
+      )
+    },
+    /**
+     * Given an item in the series, returns the previous item in the
+     * series or `defaultValue` if the given value is the first item in
+     * the series.
+     */
+    previous(current, defaultValue) {
+      return (
+        itemsByIndex[indexesByKey[toKey(current)] - 1] ??
+        defaultValue ??
+        itemsByIndex[len - 1]
+      )
+    },
     /**
      * A more dynamic method than `next` and `previous` that lets you move
      * many times in either direction.
@@ -95,15 +100,24 @@ export const series = <T>(
      * ```
      */
     spin(current, num) {
-      if (num === 0) {
+      if (!Number.isFinite(num)) {
         return current
       }
-      const abs = Math.abs(num)
-      const rel = abs > items.length ? abs % items.length : abs
-      return list(0, rel - 1).reduce(
-        acc => (num > 0 ? next(acc) : previous(acc)),
-        current,
-      )
+      const steps = Math.trunc(num)
+      if (steps === 0 || len === 0) {
+        return current
+      }
+      const idx = indexesByKey[toKey(current)]
+      if (typeof idx !== 'number') {
+        const abs = Math.abs(steps)
+        const rel = abs > len ? abs % len : abs
+        if (rel === 0) {
+          return current
+        }
+        return itemsByIndex[steps > 0 ? rel - 1 : len - rel]
+      }
+      const nextIdx = (idx + steps) % len
+      return itemsByIndex[nextIdx < 0 ? nextIdx + len : nextIdx]
     },
   }
 }
