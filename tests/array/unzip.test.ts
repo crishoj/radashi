@@ -12,4 +12,21 @@ describe('unzip', () => {
       [true, false],
     ])
   })
+
+  test('returns an empty array for empty input', () => {
+    expect(_.unzip([])).toEqual([])
+    expect(_.unzip([[], []])).toEqual([])
+  })
+
+  test('unzips arrays with differing lengths', () => {
+    const result = _.unzip<string | number>([
+      ['a', 'b', 'c'],
+      [1, 2],
+    ])
+    expect(result).toEqual([
+      ['a', 1],
+      ['b', 2],
+      ['c', undefined],
+    ])
+  })
 })
