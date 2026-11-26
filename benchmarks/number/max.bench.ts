@@ -16,4 +16,19 @@ describe('max', () => {
     ]
     _.max(list, x => x.score)
   })
+
+  const largeNumbers = Array.from(
+    { length: 1000 },
+    (_, i) => (i * 2654435761) % 1000,
+  )
+  const largeObjects = largeNumbers.map((score, id) => ({ id, score }))
+  const getScore = (x: { score: number }) => x.score
+
+  bench('with 1,000 numbers', () => {
+    _.max(largeNumbers)
+  })
+
+  bench('with 1,000 objects', () => {
+    _.max(largeObjects, getScore)
+  })
 })

@@ -22,4 +22,26 @@ describe('min', () => {
     const result = _.min([])
     expect(result).toBeNull()
   })
+  test('returns single element without calling getter', () => {
+    expect(_.min([42])).toBe(42)
+    const item = { game: 'a', score: 100 }
+    const getter = vi.fn((x: typeof item) => x.score)
+    expect(_.min([item], getter)).toBe(item)
+    expect(getter).not.toHaveBeenCalled()
+  })
+  test('returns later element on ties and calls getter once each', () => {
+    const first = { game: 'a', score: 100 }
+    const second = { game: 'b', score: 100 }
+    const getter = vi.fn((x: typeof first) => x.score)
+    expect(_.min([first, second], getter)).toBe(second)
+    expect(getter).toHaveBeenCalledTimes(2)
+  })
+  test('handles NaN consistently with reduce comparison', () => {
+    expect(_.min([5, Number.NaN])).toBeNaN()
+    expect(_.min([Number.NaN, 5])).toBe(5)
+    const a = { game: 'a', score: 5 }
+    const b = { game: 'b', score: Number.NaN }
+    expect(_.min([a, b], x => x.score)).toBe(b)
+    expect(_.min([b, a], x => x.score)).toBe(a)
+  })
 })

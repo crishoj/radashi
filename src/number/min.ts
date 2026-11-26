@@ -23,9 +23,31 @@ export function min<T>(
   array: readonly T[],
   getter?: (item: T) => number,
 ): T | null {
-  if (!array.length) {
+  const length = array.length
+  if (!length) {
     return null
   }
-  const get = getter ?? ((v: any) => v)
-  return array.reduce((a, b) => (get(a) < get(b) ? a : b))
+  let best = array[0]
+  if (length === 1) {
+    return best
+  }
+  if (getter) {
+    let bestVal = getter(best)
+    for (let i = 1; i < length; i++) {
+      const item = array[i]
+      const val = getter(item)
+      if (!(bestVal < val)) {
+        best = item
+        bestVal = val
+      }
+    }
+    return best
+  }
+  for (let i = 1; i < length; i++) {
+    const item = array[i]
+    if (!(best < item)) {
+      best = item
+    }
+  }
+  return best
 }

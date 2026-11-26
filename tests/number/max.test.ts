@@ -22,4 +22,26 @@ describe('max', () => {
     const result = _.max([])
     expect(result).toBeNull()
   })
+  test('returns single element without calling getter', () => {
+    expect(_.max([42])).toBe(42)
+    const item = { game: 'a', score: 100 }
+    const getter = vi.fn((x: typeof item) => x.score)
+    expect(_.max([item], getter)).toBe(item)
+    expect(getter).not.toHaveBeenCalled()
+  })
+  test('returns later element on ties and calls getter once each', () => {
+    const first = { game: 'a', score: 100 }
+    const second = { game: 'b', score: 100 }
+    const getter = vi.fn((x: typeof first) => x.score)
+    expect(_.max([first, second], getter)).toBe(second)
+    expect(getter).toHaveBeenCalledTimes(2)
+  })
+  test('handles NaN consistently with reduce comparison', () => {
+    expect(_.max([5, Number.NaN])).toBeNaN()
+    expect(_.max([Number.NaN, 5])).toBe(5)
+    const a = { game: 'a', score: 5 }
+    const b = { game: 'b', score: Number.NaN }
+    expect(_.max([a, b], x => x.score)).toBe(b)
+    expect(_.max([b, a], x => x.score)).toBe(a)
+  })
 })
