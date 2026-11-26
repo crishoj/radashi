@@ -13,13 +13,21 @@
  * @version 12.2.0
  */
 export function unzip<T>(arrays: readonly (readonly T[])[]): T[][] {
-  const out = new Array(
-    arrays.reduce((max, arr) => Math.max(max, arr.length), 0),
-  )
-  let index = 0
-  const get = (array: T[]) => array[index]
-  for (; index < out.length; index++) {
-    out[index] = Array.from(arrays as { length: number }, get)
+  const numArrays = arrays.length
+  let maxLen = 0
+  for (let i = 0; i < numArrays; i++) {
+    const len = arrays[i].length
+    if (len > maxLen) {
+      maxLen = len
+    }
+  }
+  const out: T[][] = new Array(maxLen)
+  for (let i = 0; i < maxLen; i++) {
+    const group = new Array<T>(numArrays)
+    for (let j = 0; j < numArrays; j++) {
+      group[j] = arrays[j][i]
+    }
+    out[i] = group
   }
   return out
 }
