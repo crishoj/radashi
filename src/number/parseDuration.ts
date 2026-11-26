@@ -1,5 +1,7 @@
 import { DurationParser, type DurationString } from 'radashi'
 
+let defaultParser: DurationParser<string, string> | undefined
+
 /**
  * Parse a duration string into a number.
  *
@@ -32,5 +34,8 @@ export function parseDuration(
   duration: DurationString<string, string>,
   options?: DurationParser.Options<string, string>,
 ): number {
-  return new DurationParser(options).parse(duration)
+  const parser = options
+    ? new DurationParser(options)
+    : (defaultParser ??= new DurationParser<string, string>())
+  return parser.parse(duration)
 }

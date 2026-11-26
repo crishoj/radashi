@@ -8,6 +8,8 @@ export type QuantityString<
   ShortUnit extends string = never,
 > = `1 ${Unit}` | `${number} ${Unit}s` | `${number}${ShortUnit}`
 
+const quantityRegex = /^(-?\d+(?:\.\d+)?) ?(\w+)?s?$/
+
 /**
  * Parses a quantity string into its numeric value.
  *
@@ -36,7 +38,7 @@ export class QuantityParser<
    * @throws {Error} If the quantity string is invalid or contains an unknown unit
    */
   parse(quantity: QuantityString<Unit, ShortUnit>): number {
-    const match = quantity.match(/^(-?\d+(?:\.\d+)?) ?(\w+)?s?$/)
+    const match = quantityRegex.exec(quantity)
     if (!match) {
       throw new Error(`Invalid quantity, cannot parse: ${quantity}`)
     }
@@ -44,18 +46,19 @@ export class QuantityParser<
     let unit = match[2] as Unit | ShortUnit
     unit = this.short?.[unit as ShortUnit] || (unit as Unit)
 
-    const count = Number.parseFloat(match[1])
-    if (!this.units[unit] && unit.endsWith('s')) {
-      unit = unit.substring(0, unit.length - 1) as Unit
+    let factor = this.units[unit]
+    if (!factor && unit.endsWith('s')) {
+      unit = unit.slice(0, -1) as Unit
+      factor = this.units[unit]
     }
 
-    if (!this.units[unit]) {
+    if (!factor) {
       throw new Error(
         `Invalid unit: ${unit}, makes sure it is one of: ${Object.keys(this.units).join(', ')}`,
       )
     }
 
-    return count * this.units[unit]
+    return Number(match[1]) * factor
   }
 }
 
