@@ -12,9 +12,7 @@ describe('trim', () => {
   })
   test('handles when char to trim is special case in regex', () => {
     expect(_.trim('_- hello_- ', '_- ')).toBe('hello')
-    expect(_.trim('[]^\\.$*+?(){}|hello[]^\\', '[]^\\.$*+?(){}|')).toBe(
-      'hello',
-    )
+    expect(_.trim('[]^\\.$*+?(){}|hello[]^\\', '[]^\\.$*+?(){}|')).toBe('hello')
     expect(_.trim('---hello---', '-')).toBe('hello')
     expect(_.trim('...hello...', '.')).toBe('hello')
   })
@@ -31,5 +29,11 @@ describe('trim', () => {
     expect(_.trim('hello_-', '_-')).toBe('hello')
     expect(_.trim('✨hello✨', '✨')).toBe('hello')
     expect(_.trim('😀hello😀', '😀')).toBe('hello')
+  })
+  test('throws when either argument is nullish', () => {
+    expect(() => _.trim(null as any, ' ')).toThrow(TypeError)
+    expect(() => _.trim(undefined as any, ' ')).toThrow(TypeError)
+    expect(() => _.trim('hello', undefined as any)).toThrow(TypeError)
+    expect(() => _.trim('', null as any)).toThrow(TypeError)
   })
 })
