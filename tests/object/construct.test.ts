@@ -101,9 +101,7 @@ describe('construct', () => {
     expect(_.construct({ a: 'str', 'a.b.c': undefined })).toStrictEqual({
       a: { b: {} },
     })
-    expect(
-      _.construct({ 'b.0': 1, 'b.1': true, 'b[1].a': 17 }),
-    ).toStrictEqual({
+    expect(_.construct({ 'b.0': 1, 'b.1': true, 'b[1].a': 17 })).toStrictEqual({
       b: [1, { a: 17 }],
     })
     expect(_.construct({ a: 'str', 'a.0': 1, 'a.1': 2 })).toStrictEqual({
