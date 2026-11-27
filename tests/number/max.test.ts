@@ -42,11 +42,11 @@ describe('max', () => {
     const a = { score: 1 }
     const b = { score: 3 }
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.max([, a, , b], x => x.score)).toBe(b)
+    expect(_.max([, a, , b] as (typeof a)[], x => x.score)).toBe(b)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.max([, 1, , 3])).toBe(3)
+    expect(_.max([, 1, , 3] as number[])).toBe(3)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.max([, ,])).toBeNull()
+    expect(_.max([, ,] as number[])).toBeNull()
   })
   test('handles NaN consistently with reduce comparison', () => {
     expect(_.max([5, Number.NaN])).toBeNaN()

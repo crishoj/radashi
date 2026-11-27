@@ -42,11 +42,11 @@ describe('min', () => {
     const a = { score: 3 }
     const b = { score: 1 }
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.min([, a, , b], x => x.score)).toBe(b)
+    expect(_.min([, a, , b] as (typeof a)[], x => x.score)).toBe(b)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.min([, 3, , 1])).toBe(1)
+    expect(_.min([, 3, , 1] as number[])).toBe(1)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.min([, ,])).toBeNull()
+    expect(_.min([, ,] as number[])).toBeNull()
   })
   test('handles NaN consistently with reduce comparison', () => {
     expect(_.min([5, Number.NaN])).toBeNaN()
