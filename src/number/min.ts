@@ -23,9 +23,21 @@ export function min<T>(
   array: readonly T[],
   getter?: (item: T) => number,
 ): T | null {
-  if (!array.length) {
-    return null
+  let best: T | null = null
+  let bestVal: any
+  let found = false
+  for (let i = 0; i < array.length; i++) {
+    const item = array[i]
+    // Skip holes in sparse arrays, like `reduce` does.
+    if (item === undefined && !(i in array)) {
+      continue
+    }
+    const val = getter ? getter(item) : item
+    if (!found || !(bestVal < val)) {
+      found = true
+      best = item
+      bestVal = val
+    }
   }
-  const get = getter ?? ((v: any) => v)
-  return array.reduce((a, b) => (get(a) < get(b) ? a : b))
+  return best
 }
