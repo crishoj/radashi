@@ -60,14 +60,31 @@ export function traverse(
   options?: TraverseOptions<any> | null,
   outerContext?: TraverseContext<any> | null,
 ): boolean {
-  const context = (outerContext ?? new Context()) as Context
-  const outerSkipped = outerContext?.skipped
+  const context = (outerContext ?? {
+    value: null,
+    key: null,
+    parent: null,
+    parents: [],
+    path: [],
+    skipped: new Set(),
+    skip(obj) {
+      context.skipped.add(obj ?? context.value)
+    },
+  }) as TraverseContext<keyof any | null> & {
+    value: unknown
+    key: keyof any | null
+    parent: any
+    parents: object[]
+    path: (keyof any)[]
+    skipped: Set<unknown>
+  }
 
-  const rootNeedsVisit = options?.rootNeedsVisit
-  const ownKeys = options?.ownKeys ?? Object.keys
-  const nestedOptions = options
-    ? { ...options, rootNeedsVisit: null }
-    : { rootNeedsVisit: null }
+  const { rootNeedsVisit } = (options ??= {})
+  const ownKeys = options.ownKeys ?? Object.keys
+  const nestedOptions = {
+    ...options,
+    rootNeedsVisit: null,
+  }
 
   let ok = true
 
@@ -89,10 +106,10 @@ export function traverse(
     // Traverse nested plain objects and arrays that haven't been
     // skipped and aren't a circular reference.
     if (
+      value !== null &&
       typeof value === 'object' &&
-      value &&
       (isArray(value) || isPlainObject(value)) &&
-      !(context._skipped ?? outerSkipped)?.has(value) &&
+      !context.skipped.has(value) &&
       !context.parents.includes(value)
     ) {
       traverse(value, result)
@@ -123,10 +140,10 @@ export function traverse(
     }
 
     if (isArray(parent)) {
-      // Use Array.prototype.some so sparse arrays are efficiently
-      // traversed and traversal stops immediately when visitor returns
-      // false.
-      parent.some((value, index) => visit(value, index) === false)
+      // Iterate a copy so the visitor can mutate the array without
+      // affecting which elements are visited. Array.prototype.some
+      // skips sparse holes and stops when the visitor returns false.
+      parent.slice().some((value, index) => visit(value, index) === false)
     }
     // Allow an iterable (e.g. a Map or a Set) to be passed in as the
     // root object.
@@ -165,7 +182,7 @@ export function traverse(
     // If this is a recursive call, it's possible that the root object
     // was skipped earlier. Check for that here so the caller doesn't
     // have to check for it.
-    if (outerSkipped!.has(root)) {
+    if (outerContext.skipped.has(root)) {
       return true
     }
 
@@ -181,23 +198,6 @@ export function traverse(
   }
 
   return traverse(root)
-}
-
-class Context {
-  value: unknown = null
-  key: keyof any | null = null
-  parent: any = null
-  parents: object[] = []
-  path: (keyof any)[] = []
-  declare _skipped?: Set<unknown>
-
-  get skipped(): Set<unknown> {
-    return (this._skipped ??= new Set())
-  }
-
-  skip = (obj?: object): void => {
-    this.skipped.add(obj ?? this.value)
-  }
 }
 
 /**
