@@ -1,11 +1,15 @@
 import { isArray, isPlainObject } from 'radashi'
 
 function collectKeys(value: any, prefix: string, out: string[]): void {
-  if (isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
-      if (i in value) {
-        const item = value[i]
-        const path = prefix + i
+  const isObject = isPlainObject(value)
+  if (isObject || isArray(value)) {
+    const props: any[] = isObject ? Object.keys(value) : value
+    for (let i = 0; i < props.length; i++) {
+      // Skip sparse array holes, like `Array#forEach` does.
+      if (isObject || i in value) {
+        const key = isObject ? props[i] : i
+        const item = (value as any)[key]
+        const path = prefix + key
         if (typeof item === 'object' && item !== null) {
           collectKeys(item, path + '.', out)
         } else {
@@ -13,23 +17,9 @@ function collectKeys(value: any, prefix: string, out: string[]): void {
         }
       }
     }
-    return
+  } else {
+    out.push(prefix.slice(0, -1))
   }
-  if (isPlainObject(value)) {
-    const objKeys = Object.keys(value)
-    for (let i = 0; i < objKeys.length; i++) {
-      const key = objKeys[i]
-      const propValue = (value as Record<string, any>)[key]
-      const path = prefix + key
-      if (typeof propValue === 'object' && propValue !== null) {
-        collectKeys(propValue, path + '.', out)
-      } else {
-        out.push(path)
-      }
-    }
-    return
-  }
-  out.push(prefix.slice(0, -1))
 }
 
 /**

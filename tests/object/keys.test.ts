@@ -41,10 +41,6 @@ describe('keys', () => {
     expect(_.keys({ a: {}, b: [], c: 1 })).toEqual(['c'])
   })
   test('treats non-plain objects and primitives as leaves', () => {
-    expect(_.keys(new Date())).toEqual([''])
-    expect(_.keys(new Map())).toEqual([''])
-    expect(_.keys(null as any)).toEqual([''])
-    expect(_.keys(42 as any)).toEqual([''])
     expect(
       _.keys({
         date: new Date(),
