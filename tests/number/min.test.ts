@@ -45,8 +45,7 @@ describe('min', () => {
     expect(_.min([, a, , b] as (typeof a)[], x => x.score)).toBe(b)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
     expect(_.min([, 3, , 1] as number[])).toBe(1)
-    // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.min([, ,] as number[])).toBeNull()
+    expect(_.min(new Array<number>(2))).toBeNull()
   })
   test('handles NaN consistently with reduce comparison', () => {
     expect(_.min([5, Number.NaN])).toBeNaN()

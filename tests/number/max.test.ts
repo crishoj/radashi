@@ -45,8 +45,7 @@ describe('max', () => {
     expect(_.max([, a, , b] as (typeof a)[], x => x.score)).toBe(b)
     // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
     expect(_.max([, 1, , 3] as number[])).toBe(3)
-    // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
-    expect(_.max([, ,] as number[])).toBeNull()
+    expect(_.max(new Array<number>(2))).toBeNull()
   })
   test('handles NaN consistently with reduce comparison', () => {
     expect(_.max([5, Number.NaN])).toBeNaN()
