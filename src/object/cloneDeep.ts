@@ -141,8 +141,6 @@ export const FastCloningStrategy = {
   },
 }
 
-let resolvedFastStrategy: CloningStrategy | undefined
-
 /**
  * Clone the given object and possibly other objects nested inside.
  *
@@ -172,14 +170,9 @@ export function cloneDeep<T extends object>(
   customStrategy?: Partial<CloningStrategy>,
 ): T {
   const isBuiltin = !customStrategy || customStrategy === FastCloningStrategy
-  const strategy = !customStrategy
-    ? DefaultCloningStrategy
-    : customStrategy === FastCloningStrategy
-      ? (resolvedFastStrategy ??= {
-          ...DefaultCloningStrategy,
-          ...FastCloningStrategy,
-        })
-      : { ...DefaultCloningStrategy, ...customStrategy }
+  const strategy = customStrategy
+    ? { ...DefaultCloningStrategy, ...customStrategy }
+    : DefaultCloningStrategy
 
   const tracked = new Map<unknown, unknown>()
   let currentParent: unknown
