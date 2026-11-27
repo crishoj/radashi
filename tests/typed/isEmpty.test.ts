@@ -1,3 +1,4 @@
+import * as vm from 'node:vm'
 import * as _ from 'radashi'
 
 describe('isEmpty', () => {
@@ -24,19 +25,14 @@ describe('isEmpty', () => {
     expect(_.isEmpty(Number.NaN)).toBeTruthy()
     expect(_.isEmpty(Object.create(null))).toBeTruthy()
     expect(_.isEmpty(Object.create({ inherited: 1 }))).toBeTruthy()
-    const crossRealmInvalidDate = Object.setPrototypeOf(
-      new Date('invalid value'),
-      { getTime: Date.prototype.getTime },
-    )
-    expect(_.isEmpty(crossRealmInvalidDate)).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('new Date(NaN)'))).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('[]'))).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('({})'))).toBeTruthy()
   })
   test('returns false for non-empty values', () => {
     expect(_.isEmpty(new Date())).toBeFalsy()
     expect(_.isEmpty(new Date('2022-09-01T02:19:55.976Z'))).toBeFalsy()
-    const crossRealmDate = Object.setPrototypeOf(new Date(), {
-      getTime: Date.prototype.getTime,
-    })
-    expect(_.isEmpty(crossRealmDate)).toBeFalsy()
+    expect(_.isEmpty(vm.runInNewContext('new Date()'))).toBeFalsy()
     expect(_.isEmpty({ getTime: () => 0 })).toBeFalsy()
     expect(_.isEmpty(Object.assign(Object.create(null), { a: 1 }))).toBeFalsy()
     expect(_.isEmpty({ a: 1, b: 2, c: 3 })).toBeFalsy()
