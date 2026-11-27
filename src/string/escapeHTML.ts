@@ -1,4 +1,11 @@
-const htmlCharacters = /[&<>"']/
+const htmlCharacters = /[&<>"']/g
+const replacements: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}
 
 /**
  * Escape HTML characters in a string.
@@ -12,48 +19,17 @@ const htmlCharacters = /[&<>"']/
  * @version 12.6.0
  */
 export function escapeHTML(input: string): string {
-  let i = input.search(htmlCharacters)
-  if (i === -1) {
-    return input
-  }
-
+  // Manual `exec` loop instead of `replace` with a callback: one native
+  // scan, no per-match callback, and no allocation when nothing matches.
+  // The loop always runs until `exec` returns null, which resets the
+  // regex's `lastIndex` to 0 for the next call.
   let result = ''
   let lastIndex = 0
-  const len = input.length
-
-  for (; i < len; i++) {
-    const code = input.charCodeAt(i)
-    if (code > 62) {
-      continue
-    }
-
-    let escaped: string
-    switch (code) {
-      case 34:
-        escaped = '&quot;'
-        break
-      case 38:
-        escaped = '&amp;'
-        break
-      case 39:
-        escaped = '&#39;'
-        break
-      case 60:
-        escaped = '&lt;'
-        break
-      case 62:
-        escaped = '&gt;'
-        break
-      default:
-        continue
-    }
-
-    if (lastIndex !== i) {
-      result += input.slice(lastIndex, i)
-    }
-    result += escaped
-    lastIndex = i + 1
+  let match: RegExpExecArray | null
+  while ((match = htmlCharacters.exec(input))) {
+    result += input.slice(lastIndex, match.index)
+    result += replacements[match[0]]
+    lastIndex = htmlCharacters.lastIndex
   }
-
-  return lastIndex < len ? result + input.slice(lastIndex) : result
+  return lastIndex ? result + input.slice(lastIndex) : input
 }
