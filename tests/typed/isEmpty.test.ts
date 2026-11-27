@@ -1,3 +1,4 @@
+import * as vm from 'node:vm'
 import * as _ from 'radashi'
 
 describe('isEmpty', () => {
@@ -18,15 +19,29 @@ describe('isEmpty', () => {
     expect(_.isEmpty('')).toBeTruthy()
     expect(_.isEmpty(String())).toBeTruthy()
     expect(_.isEmpty(new Map())).toBeTruthy()
+    expect(_.isEmpty(new Set())).toBeTruthy()
+    expect(_.isEmpty({ length: 0 })).toBeTruthy()
     expect(_.isEmpty(new Date('invalid value'))).toBeTruthy()
+    expect(_.isEmpty(Number.NaN)).toBeTruthy()
+    expect(_.isEmpty(Object.create(null))).toBeTruthy()
+    expect(_.isEmpty(Object.create({ inherited: 1 }))).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('new Date(NaN)'))).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('[]'))).toBeTruthy()
+    expect(_.isEmpty(vm.runInNewContext('({})'))).toBeTruthy()
   })
   test('returns false for non-empty values', () => {
     expect(_.isEmpty(new Date())).toBeFalsy()
     expect(_.isEmpty(new Date('2022-09-01T02:19:55.976Z'))).toBeFalsy()
+    expect(_.isEmpty(vm.runInNewContext('new Date()'))).toBeFalsy()
+    expect(_.isEmpty({ getTime: () => 0 })).toBeFalsy()
+    expect(_.isEmpty(Object.assign(Object.create(null), { a: 1 }))).toBeFalsy()
+    expect(_.isEmpty({ a: 1, b: 2, c: 3 })).toBeFalsy()
     expect(_.isEmpty(22)).toBeFalsy()
     expect(_.isEmpty(-22)).toBeFalsy()
+    expect(_.isEmpty(1n)).toBeFalsy()
     expect(_.isEmpty(new Person())).toBeFalsy()
     expect(_.isEmpty({ name: 'x' })).toBeFalsy()
+    expect(_.isEmpty({ length: 2 })).toBeFalsy()
     expect(_.isEmpty('abc')).toBeFalsy()
     expect(_.isEmpty(String('abc'))).toBeFalsy()
     expect(_.isEmpty([1, 2, 3])).toBeFalsy()
@@ -37,5 +52,6 @@ describe('isEmpty', () => {
     const map = new Map()
     map.set('a', 1)
     expect(_.isEmpty(map)).toBeFalsy()
+    expect(_.isEmpty(new Set([1]))).toBeFalsy()
   })
 })

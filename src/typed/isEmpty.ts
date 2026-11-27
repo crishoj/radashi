@@ -1,4 +1,4 @@
-import { isDate, isNumber } from 'radashi'
+import { isDate } from 'radashi'
 
 /**
  * Return true if the given value is empty.
@@ -34,19 +34,25 @@ export function isEmpty(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) {
     return !value || value === true
   }
-  if (isDate(value)) {
-    return Number.isNaN(value.getTime())
-  }
+  // Check `length` and `size` before `isDate`, so arrays, strings,
+  // maps and sets skip its `Object.prototype.toString` call.
   const length = (value as any).length
-  if (isNumber(length)) {
+  if (typeof length === 'number') {
     return length === 0
   }
   const size = (value as any).size
-  if (isNumber(size)) {
+  if (typeof size === 'number') {
     return size === 0
   }
-  const keys = Object.keys(value).length
-  return keys === 0
+  if (isDate(value)) {
+    return Number.isNaN(value.getTime())
+  }
+  for (const key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      return false
+    }
+  }
+  return true
 }
 
 // biome-ignore lint/complexity/noBannedTypes:
