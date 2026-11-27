@@ -1,4 +1,4 @@
-import { isArray, isFunction, isIterable, isPlainObject, last } from 'radashi'
+import { isArray, isIterable, isPlainObject } from 'radashi'
 
 export interface TraverseOptions<Key = string | number | symbol> {
   /**
@@ -90,11 +90,6 @@ export function traverse(
 
   // This is called for each value in an object or iterable.
   const visit = (value: unknown, key: keyof any): boolean => {
-    // Map entries are destructured into value and key.
-    if (context.parent.constructor === Map) {
-      ;[key, value] = value as [keyof any, unknown]
-    }
-
     context.path.push(key)
     const result = visitor(
       (context.value = value),
@@ -145,24 +140,22 @@ export function traverse(
     }
 
     if (isArray(parent)) {
-      // Use Array.prototype.forEach for arrays so that sparse arrays
-      // are efficiently traversed. The array must be cloned so it can
-      // be cleared if the visitor returns false.
-      parent.slice().forEach((value, index, values) => {
-        if (visit(value, index) === false) {
-          values.length = 0 // Stop further traversal.
-        }
-      })
+      // Iterate a copy so the visitor can mutate the array without
+      // affecting which elements are visited. Array.prototype.some
+      // skips sparse holes and stops when the visitor returns false.
+      parent.slice().some((value, index) => visit(value, index) === false)
     }
     // Allow an iterable (e.g. a Map or a Set) to be passed in as the
     // root object.
     else if (parent === root && isIterable(parent)) {
+      const isMap = parent.constructor === Map
       let index = 0
-      for (const value of parent) {
-        if (visit(value, index) === false) {
+      for (const item of parent as Iterable<any>) {
+        // Map entries are destructured into key and value.
+        const res = isMap ? visit(item[1], item[0]) : visit(item, index++)
+        if (res === false) {
           return ok
         }
-        index++
       }
     }
     // Traverse the object's properties.
@@ -175,10 +168,10 @@ export function traverse(
     }
 
     context.parents.pop()
-    context.parent = last(context.parents)
+    context.parent = context.parents[context.parents.length - 1]
 
     // Invoke the leave callback for the completed parent.
-    if (ok && isFunction(parentResult)) {
+    if (ok && typeof parentResult === 'function') {
       ok = parentResult() !== false
     }
 

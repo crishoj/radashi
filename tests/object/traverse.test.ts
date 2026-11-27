@@ -123,6 +123,27 @@ describe('traverse', () => {
     ])
   })
 
+  test('visit a snapshot of an array mutated by the visitor', () => {
+    const arr = [1, 2, 3, 4]
+
+    const visited: [keyof any, unknown][] = []
+    _.traverse(arr, (value, key, parent) => {
+      visited.push([key, value])
+      if (key === 0) {
+        ;(parent as number[]).splice(1, 1)
+        ;(parent as number[])[1] = 99
+      }
+    })
+
+    expect(visited).toEqual([
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 4],
+    ])
+    expect(arr).toEqual([1, 99, 4])
+  })
+
   test('traverse a sparse array', () => {
     // biome-ignore lint/suspicious/noSparseArray:
     const arr = [1, , 3]
