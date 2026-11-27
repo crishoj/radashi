@@ -104,7 +104,8 @@ export function chain(...funcs: ((...args: any[]) => any)[]) {
   return (...args: any[]) => {
     let result = funcs[0](...args)
     for (let i = 1; i < funcs.length; i++) {
-      result = funcs[i](result)
+      const fn = funcs[i]
+      result = fn(result)
     }
     return result
   }

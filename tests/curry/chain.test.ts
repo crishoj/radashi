@@ -54,4 +54,15 @@ describe('chain', () => {
     const result = users.map(getUpperName)
     expect(result).toEqual(['JOHN DOE', 'JOHN SMITH', 'JOHN WICK'])
   })
+
+  test('does not pass the function list as `this` to later functions', () => {
+    const contexts: unknown[] = []
+    function record(this: unknown, num: number) {
+      contexts.push(this)
+      return num + 1
+    }
+    const func = _.chain((num: number) => num, record, record)
+    expect(func(0)).toBe(2)
+    expect(contexts).toEqual([undefined, undefined])
+  })
 })
