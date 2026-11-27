@@ -11,19 +11,18 @@
  * @version 12.1.0
  */
 export function flat<T>(lists: readonly T[][]): T[] {
-  let totalLength = 0
-  for (let i = 0; i < lists.length; i++) {
-    totalLength += lists[i].length
-  }
-
-  const out: T[] = new Array(totalLength)
+  // Skip holes in `lists`, like `reduce` does.
+  const out: T[] = new Array(
+    lists.reduce((total, list) => total + list.length, 0),
+  )
   let offset = 0
   for (let i = 0; i < lists.length; i++) {
-    const list = lists[i]
-    for (let j = 0; j < list.length; j++) {
-      out[offset++] = list[j]
+    if (i in lists) {
+      const list = lists[i]
+      for (let j = 0; j < list.length; j++) {
+        out[offset++] = list[j]
+      }
     }
   }
-
   return out
 }

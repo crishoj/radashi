@@ -29,6 +29,12 @@ describe('flat', () => {
     expect(1 in result).toBe(true)
   })
 
+  test('skips holes in the outer array', () => {
+    const lists: number[][] = new Array(3)
+    lists[1] = [1, 2]
+    expect(_.flat(lists)).toEqual([1, 2])
+  })
+
   test('handles large inner arrays without stack overflow', () => {
     const large = Array.from({ length: 200_000 }, (_, i) => i)
     const result = _.flat([large, [200_000]])
