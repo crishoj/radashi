@@ -21,5 +21,10 @@ export function intersects<T, K>(
     const known = new Set(listA.map(identity))
     return listB.some(item => known.has(identity(item)))
   }
+  if (listA.length > 32 && listB.length > 32) {
+    // Avoid the O(n*m) `includes` scan for larger lists.
+    const known = new Set(listA)
+    return listB.some(item => known.has(item))
+  }
   return listB.some(item => listA.includes(item))
 }
