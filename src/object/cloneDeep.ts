@@ -95,9 +95,12 @@ export const DefaultCloningStrategy: CloningStrategy = {
       // By copying the property descriptors, we preserve computed
       // properties and non-enumerable properties.
       const descriptor = Object.getOwnPropertyDescriptor(input, key)!
+      // Plain data properties can be assigned directly, unless the key
+      // is inherited (e.g. `__proto__`, or `toString` on a frozen
+      // Object.prototype), where assignment would hit the prototype.
       if (
         isPlain &&
-        key !== '__proto__' &&
+        !(key in output) &&
         descriptor.writable &&
         descriptor.enumerable &&
         descriptor.configurable

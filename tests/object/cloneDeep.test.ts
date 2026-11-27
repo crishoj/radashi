@@ -129,6 +129,37 @@ describe('cloneDeep', () => {
     expect(result.a).toBe(1)
   })
 
+  test('own keys shadowing read-only or accessor Object.prototype properties', () => {
+    // Simulates frozen intrinsics (e.g. SES lockdown) and inherited
+    // accessors, where plain assignment would throw or hit a setter.
+    const setter = vi.fn()
+    Object.defineProperty(Object.prototype, '__radashiReadOnly__', {
+      value: 'inherited',
+      writable: false,
+      configurable: true,
+    })
+    Object.defineProperty(Object.prototype, '__radashiAccessor__', {
+      get: () => 'inherited',
+      set: setter,
+      configurable: true,
+    })
+    try {
+      const source = {
+        __radashiReadOnly__: { a: 1 },
+        __radashiAccessor__: { b: 2 },
+      }
+      const result = _.cloneDeep(source)
+      expect(Object.keys(result)).toEqual(Object.keys(source))
+      expect(result.__radashiReadOnly__).toEqual({ a: 1 })
+      expect(result.__radashiReadOnly__).not.toBe(source.__radashiReadOnly__)
+      expect(result.__radashiAccessor__).toEqual({ b: 2 })
+      expect(setter).not.toHaveBeenCalled()
+    } finally {
+      delete (Object.prototype as any).__radashiReadOnly__
+      delete (Object.prototype as any).__radashiAccessor__
+    }
+  })
+
   test('null-prototype objects and custom class instances', () => {
     const nullProto = Object.create(null)
     nullProto.a = { b: 1 }
