@@ -53,14 +53,12 @@ export class DurationParser<
 > extends QuantityParser<DurationUnit | TUnit, DurationShortUnit | TShortUnit> {
   constructor(options?: DurationParser.Options<TUnit, TShortUnit>) {
     super({
-      units: {
-        ...DurationParser.units,
-        ...options?.units,
-      },
-      short: {
-        ...DurationParser.shortUnits,
-        ...options?.short,
-      },
+      units: options?.units
+        ? { ...DURATION_UNITS, ...options.units }
+        : DURATION_UNITS,
+      short: options?.short
+        ? { ...DURATION_SHORT_UNITS, ...options.short }
+        : DURATION_SHORT_UNITS,
     } as QuantityParser.Options<
       DurationUnit | TUnit,
       DurationShortUnit | TShortUnit

@@ -69,6 +69,11 @@ describe('DurationParser', () => {
     expect(parser.parse('2mo')).toBe(60 * day)
   })
 
+  test('static units and shortUnits', () => {
+    expect(_.DurationParser.units.hour).toBe(hour)
+    expect(_.DurationParser.shortUnits.h).toBe('hour')
+  })
+
   test('bad input', () => {
     const parser = new _.DurationParser()
 
@@ -93,4 +98,25 @@ test('parseDuration with zero and fractional plural units', () => {
   expect(_.parseDuration('0 seconds')).toBe(0)
   expect(_.parseDuration('0.5 seconds')).toBe(500)
   expect(_.parseDuration('-0.5 seconds')).toBe(-500)
+})
+
+test('parseDuration with custom options', () => {
+  expect(
+    _.parseDuration('2 months', {
+      units: {
+        month: 30 * day,
+      },
+    }),
+  ).toBe(60 * day)
+
+  expect(
+    _.parseDuration('2mo', {
+      units: {
+        month: 30 * day,
+      },
+      short: {
+        mo: 'month',
+      },
+    }),
+  ).toBe(60 * day)
 })
