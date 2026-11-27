@@ -49,6 +49,15 @@ describe('dedent', () => {
     )
   })
 
+  test('explicit indentation is matched literally', () => {
+    expect(_.dedent('> a\n> b\nc', '> ')).toBe('a\nb\nc')
+    expect(_.dedent('..a\nxxb', '..')).toBe('a\nxxb')
+    expect(_.dedent('\\sa\n b', '\\s')).toBe('a\n b')
+    expect(_.dedent('(a\n(b', '(')).toBe('a\nb')
+    expect(_.dedent('$^a\n$^b', '$^')).toBe('a\nb')
+    expect(_.dedent('[*+?{}|]a', '[*+?{}|]')).toBe('a')
+  })
+
   test('tagged template strings', () => {
     const result = _.dedent`
       Foo ${1}

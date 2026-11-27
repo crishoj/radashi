@@ -78,9 +78,15 @@ export function dedent(
   const indent = values[0] ?? text.match(/^[ \t]*(?=\S)/m)?.[0]
 
   // Note: Lines with an indent less than the removed indent will not
-  // be changed.
+  // be changed. The indent is escaped, so it's matched literally.
   const output = indent
-    ? text.replace(new RegExp(`^${indent}`, 'gm'), '')
+    ? text.replace(
+        new RegExp(
+          `^${String(indent).replace(/[$()*+.?[\\\]^{|}]/g, '\\$&')}`,
+          'gm',
+        ),
+        '',
+      )
     : text
 
   // Remove the first and last lines (if empty).
