@@ -56,8 +56,7 @@ export async function parallel<T, K>(
   array: readonly T[],
   func: (item: T) => Promise<K>,
 ): Promise<K[]> {
-  const { length } = array
-  if (!length) {
+  if (!array.length) {
     return []
   }
 
@@ -71,17 +70,22 @@ export async function parallel<T, K>(
     signal?.throwIfAborted()
   }
 
+  // Snapshot the array (skipping holes) so later mutation by the
+  // caller doesn't affect which items are processed.
+  const work = array.filter(() => true)
+  const { length } = work
   const workerCount =
     limit > length ? length : limit >= 1 ? Math.floor(limit) : 1
   const results: K[] = new Array(length)
   let errors: WorkError[] | undefined
-  let nextIndex = 0
+  // Items are taken from the end of the array, like `work.pop()` did.
+  let nextIndex = length
 
   const runWorker = async () => {
-    while (nextIndex < length && !signal?.aborted) {
-      const index = nextIndex++
+    while (nextIndex > 0 && !signal?.aborted) {
+      const index = --nextIndex
       try {
-        results[index] = await func(array[index])
+        results[index] = await func(work[index])
       } catch (error) {
         errors ??= []
         errors.push({ index, error })
@@ -89,16 +93,11 @@ export async function parallel<T, K>(
     }
   }
 
-  let done: Promise<unknown>
-  if (workerCount === 1) {
-    done = runWorker()
-  } else {
-    const workers: Promise<void>[] = new Array(workerCount)
-    for (let i = 0; i < workerCount; i++) {
-      workers[i] = runWorker()
-    }
-    done = Promise.all(workers)
+  const workers: Promise<void>[] = new Array(workerCount)
+  for (let i = 0; i < workerCount; i++) {
+    workers[i] = runWorker()
   }
+  const done = Promise.all(workers)
 
   if (signal) {
     let onAbort: () => void
@@ -116,9 +115,7 @@ export async function parallel<T, K>(
   }
 
   if (errors) {
-    if (errors.length > 1) {
-      errors.sort((a, b) => a.index - b.index)
-    }
+    errors.sort((a, b) => a.index - b.index)
     throw new AggregateError(errors.map(e => e.error))
   }
 
