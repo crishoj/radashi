@@ -1,12 +1,4 @@
-import {
-  AggregateError,
-  clamp,
-  flat,
-  fork,
-  isNumber,
-  list,
-  sort,
-} from 'radashi'
+import { AggregateError, isNumber } from 'radashi'
 
 type AbortSignal = {
   readonly aborted: boolean
@@ -16,10 +8,9 @@ type AbortSignal = {
   throwIfAborted(): void
 }
 
-type WorkItemResult<K> = {
+type WorkError = {
   index: number
-  result: K
-  error?: any
+  error: any
 }
 
 export type ParallelOptions = {
@@ -69,64 +60,64 @@ export async function parallel<T, K>(
     return []
   }
 
-  const work = array.map((item, index) => ({
-    index,
-    item,
-  }))
-
+  let limit: number
   let signal: AbortSignal | undefined
   if (isNumber(options)) {
-    options = {
-      limit: options,
-    }
+    limit = options
   } else {
+    limit = options.limit
     signal = options.signal
     signal?.throwIfAborted()
   }
 
-  // Process array items
-  const processor = async (resolve: (value: WorkItemResult<K>[]) => void) => {
-    const results: WorkItemResult<K>[] = []
-    while (!signal?.aborted) {
-      const next = work.pop()
-      if (!next) {
-        break
-      }
+  // Snapshot the array (skipping holes) so later mutation by the
+  // caller doesn't affect which items are processed.
+  const work = array.filter(() => true)
+  const { length } = work
+  const workerCount =
+    limit > length ? length : limit >= 1 ? Math.floor(limit) : 1
+  const results: K[] = new Array(length)
+  let errors: WorkError[] | undefined
+  // Items are taken from the end of the array, like `work.pop()` did.
+  let nextIndex = length
+
+  const runWorker = async () => {
+    while (nextIndex > 0 && !signal?.aborted) {
+      const index = --nextIndex
       try {
-        results.push({ result: await func(next.item), index: next.index })
+        results[index] = await func(work[index])
       } catch (error) {
-        results.push({ error, result: undefined as K, index: next.index })
+        errors ??= []
+        errors.push({ index, error })
       }
     }
-    return resolve(results)
   }
 
-  const queues = Promise.all(
-    list(1, clamp(options.limit, 1, array.length)).map(
-      () => new Promise(processor),
-    ),
-  )
+  const workers: Promise<void>[] = new Array(workerCount)
+  for (let i = 0; i < workerCount; i++) {
+    workers[i] = runWorker()
+  }
+  const done = Promise.all(workers)
 
-  let signalPromise: Promise<never> | undefined
   if (signal) {
-    signalPromise = new Promise((_, reject) => {
-      const onAbort = () => reject(signal.reason)
+    let onAbort: () => void
+    const signalPromise = new Promise<never>((_, reject) => {
+      onAbort = () => reject(signal.reason)
       signal.addEventListener('abort', onAbort)
-      queues.then(() => signal.removeEventListener('abort', onAbort))
     })
+    try {
+      await Promise.race([done, signalPromise])
+    } finally {
+      signal.removeEventListener('abort', onAbort!)
+    }
+  } else {
+    await done
   }
 
-  // Wait for all queues to complete
-  const itemResults = await (signalPromise
-    ? Promise.race([queues, signalPromise])
-    : queues)
-
-  const [errors, results] = fork(
-    sort(flat(itemResults), r => r.index),
-    x => 'error' in x,
-  )
-  if (errors.length > 0) {
-    throw new AggregateError(errors.map(error => error.error))
+  if (errors) {
+    errors.sort((a, b) => a.index - b.index)
+    throw new AggregateError(errors.map(e => e.error))
   }
-  return results.map(r => r.result)
+
+  return results
 }

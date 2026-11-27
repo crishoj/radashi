@@ -163,4 +163,56 @@ describe('parallel', () => {
     })
     expect(result).toEqual([])
   })
+
+  test('orders aggregated errors by input index', async () => {
+    vi.useFakeTimers()
+
+    const promise = _.parallel(3, [1, 2, 3], async num => {
+      await _.sleep((4 - num) * 10)
+      throw new Error(`error ${num}`)
+    })
+    promise.catch(_.noop)
+
+    await vi.advanceTimersByTimeAsync(40)
+
+    const [error] = await _.try(() => promise)()
+    const err = error as AggregateError
+    expect(err.errors.map((e: Error) => e.message)).toEqual([
+      'error 1',
+      'error 2',
+      'error 3',
+    ])
+  })
+
+  test('invokes the callback from the last item to the first', async () => {
+    const calls: number[] = []
+    const result = await _.parallel(2, [0, 1, 2, 3, 4], async num => {
+      calls.push(num)
+      await Promise.resolve()
+      return num * 10
+    })
+    expect(calls).toEqual([4, 3, 2, 1, 0])
+    expect(result).toEqual([0, 10, 20, 30, 40])
+  })
+
+  test('ignores mutation of the array after the call', async () => {
+    const array = [1, 2, 3]
+    const result = await _.parallel(1, array, async num => {
+      array.fill(99)
+      array.push(4)
+      return num
+    })
+    expect(result).toEqual([1, 2, 3])
+  })
+
+  test('skips holes in sparse arrays', async () => {
+    const calls: number[] = []
+    // biome-ignore lint/suspicious/noSparseArray: testing sparse input
+    const result = await _.parallel(2, [1, , 3], async num => {
+      calls.push(num as number)
+      return num
+    })
+    expect(calls).toEqual([3, 1])
+    expect(result).toEqual([1, 3])
+  })
 })
