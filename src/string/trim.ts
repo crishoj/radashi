@@ -14,7 +14,32 @@
  * @version 12.1.0
  */
 export function trim(str: string, charsToTrim: string): string {
-  const toTrim = charsToTrim.replace(/[\W]{1}/g, '\\$&')
-  const regex = new RegExp(`^[${toTrim}]+|[${toTrim}]+$`, 'g')
-  return str.replace(regex, '')
+  // Read both lengths up front so nullish arguments throw, as before.
+  const charsLen = charsToTrim.length
+  let start = 0
+  let end = str.length
+
+  while (
+    start < end &&
+    includes(charsToTrim, charsLen, str.charCodeAt(start))
+  ) {
+    start++
+  }
+  while (
+    end > start &&
+    includes(charsToTrim, charsLen, str.charCodeAt(end - 1))
+  ) {
+    end--
+  }
+
+  return str.slice(start, end)
+}
+
+function includes(chars: string, length: number, code: number): boolean {
+  for (let i = 0; i < length; i++) {
+    if (chars.charCodeAt(i) === code) {
+      return true
+    }
+  }
+  return false
 }
