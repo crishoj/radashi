@@ -1,4 +1,5 @@
-import { iterate, random } from 'radashi'
+const CHARACTERS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
 /**
  * Generate a random string of a given length.
@@ -12,13 +13,13 @@ import { iterate, random } from 'radashi'
  * @version 12.1.0
  */
 export function uid(length: number, specials = ''): string {
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' + specials
-  return iterate(
-    length,
-    acc => {
-      return acc + characters.charAt(random(0, characters.length - 1))
-    },
-    '',
-  )
+  const characters = specials ? CHARACTERS + specials : CHARACTERS
+  const max = characters.length
+  let result = ''
+  // 1-based like the former `iterate` call, so fractional lengths keep
+  // their old result (uid(2.5) has length 2, not 3).
+  for (let i = 1; i <= length; i++) {
+    result += characters[(Math.random() * max) | 0]
+  }
+  return result
 }
