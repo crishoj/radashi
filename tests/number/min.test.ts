@@ -22,19 +22,31 @@ describe('min', () => {
     const result = _.min([])
     expect(result).toBeNull()
   })
-  test('returns single element without calling getter', () => {
+  test('returns the only element of a single-element array', () => {
     expect(_.min([42])).toBe(42)
     const item = { game: 'a', score: 100 }
-    const getter = vi.fn((x: typeof item) => x.score)
-    expect(_.min([item], getter)).toBe(item)
-    expect(getter).not.toHaveBeenCalled()
+    expect(_.min([item], x => x.score)).toBe(item)
   })
-  test('returns later element on ties and calls getter once each', () => {
+  test('returns later element on ties', () => {
     const first = { game: 'a', score: 100 }
     const second = { game: 'b', score: 100 }
-    const getter = vi.fn((x: typeof first) => x.score)
-    expect(_.min([first, second], getter)).toBe(second)
-    expect(getter).toHaveBeenCalledTimes(2)
+    expect(_.min([first, second], x => x.score)).toBe(second)
+  })
+  test('calls getter once per element', () => {
+    const list = [{ score: 2 }, { score: 1 }, { score: 3 }, { score: 2 }]
+    const getter = vi.fn((x: { score: number }) => x.score)
+    _.min(list, getter)
+    expect(getter).toHaveBeenCalledTimes(list.length)
+  })
+  test('skips holes in sparse arrays', () => {
+    const a = { score: 3 }
+    const b = { score: 1 }
+    // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
+    expect(_.min([, a, , b], x => x.score)).toBe(b)
+    // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
+    expect(_.min([, 3, , 1])).toBe(1)
+    // biome-ignore lint/suspicious/noSparseArray: testing sparse arrays
+    expect(_.min([, ,])).toBeNull()
   })
   test('handles NaN consistently with reduce comparison', () => {
     expect(_.min([5, Number.NaN])).toBeNaN()

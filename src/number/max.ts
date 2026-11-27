@@ -23,30 +23,20 @@ export function max<T>(
   array: readonly T[],
   getter?: (item: T) => number,
 ): T | null {
-  const length = array.length
-  if (!length) {
-    return null
-  }
-  let best = array[0]
-  if (length === 1) {
-    return best
-  }
-  if (getter) {
-    let bestVal = getter(best)
-    for (let i = 1; i < length; i++) {
-      const item = array[i]
-      const val = getter(item)
-      if (!(bestVal > val)) {
-        best = item
-        bestVal = val
-      }
-    }
-    return best
-  }
-  for (let i = 1; i < length; i++) {
+  let best: T | null = null
+  let bestVal: any
+  let found = false
+  for (let i = 0; i < array.length; i++) {
     const item = array[i]
-    if (!(best > item)) {
+    // Skip holes in sparse arrays, like `reduce` does.
+    if (item === undefined && !(i in array)) {
+      continue
+    }
+    const val = getter ? getter(item) : item
+    if (!found || !(bestVal > val)) {
+      found = true
       best = item
+      bestVal = val
     }
   }
   return best
